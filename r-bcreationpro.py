@@ -40,6 +40,31 @@ def genera_melodia(lunghezza=16, tonalita_base=0):
     
     return melodia
 
+import mido
+from mido import MidiFile, MidiTrack, Message
+
+def esporta_midi(melodia, filename='melodia_rnb.mid', bpm=85):
+    mid = MidiFile(ticks_per_beat=480)  # Standard MIDI
+    track = MidiTrack()
+    mid.tracks.append(track)
+    
+    time = 0
+    track.append(Message('program_change', program=4, time=0))  # Suono Rhodes/electric piano R&B
+    
+    for nota in melodia:
+        semitono = nota['nota'] + 60  # MIDI note (C4=60, A3-ish per vibe bassa)
+        durata_ticks = int((nota['durata'] / 4) * bpm * (480 / 60))  # Converti battiti in ticks
+        
+        track.append(Message('note_on', note=semitono, velocity=80, time=time))
+        time = durata_ticks
+        track.append(Message('note_off', note=semitono, velocity=0, time=durata_ticks))
+    
+    mid.save(filename)
+    print(f"MIDI salvato: {filename}")
+
+# Usa dopo aver generato la melodia
+esporta_midi(melodia, 'midnite_rnb.mid')
+
 # Esempio di generazione
 random.seed(42)  # Riproducibile
 melodia = genera_melodia(16, tonalita_base=9)  # A minor-ish

@@ -18,7 +18,8 @@ def generate_tone(freq, duration, type="sine"):
     else: wave = np.sin(2 * np.pi * freq * t)
     return wave * 0.5
 
-st.title("🎹 R&B Sequencer Pro - BPM Control")
+st.image("banner.png")
+st.title("🎹 R&B Sequencer Pro")
 
 
 # Gestione Stato per il Reset

@@ -9,9 +9,9 @@ NOTE_MAP = {"-": 0, "Do": 261.63, "Re": 293.66, "Mi": 329.63, "Fa": 349.23, "Sol
 SR = 44100
 
 
-st.image("banner.png", layout = "wide")
+st.image("banner.png")
 
-st.title("🎹 R&B Sequencer Pro")
+st.title("🎹 R&B Sequencer Pro", layout = "wide")
 
 # Parametri
 bpm = st.slider("BPM", 60, 140, 85)

@@ -1,4 +1,39 @@
 import streamlit as st
+import numpy as np
+from pydub import AudioSegment
+from pydub.generators import Sine, Square, Sawtooth, Triangle
+import io
+
+# Funzione per generare frequenze semplici (MIDI to Hz)
+def note_to_freq(note_name):
+    notes = {"Do": 261.63, "Re": 293.66, "Mi": 329.63, "Fa": 349.23, "Sol": 392.00, "La": 440.00, "Si": 493.88}
+    return notes.get(note_name, 0)
+
+def genera_audio(basso, rhodes, chitarra, archi):
+    # Generiamo un secondo di audio per ogni strumento
+    # Nota: il basso usa una forma d'onda più cupa (Square), il Rhodes più pura (Sine)
+    basso_wave = Square(note_to_freq(basso)/2).to_audio_segment(duration=1000) if basso != "-" else AudioSegment.silent(duration=1000)
+    rhodes_wave = Sine(note_to_freq(rhodes)).to_audio_segment(duration=1000) if rhodes != "-" else AudioSegment.silent(duration=1000)
+    chitarra_wave = Triangle(note_to_freq(chitarra)).to_audio_segment(duration=1000) if chitarra != "-" else AudioSegment.silent(duration=1000)
+    archi_wave = Sawtooth(note_to_freq(archi) * 2).to_audio_segment(duration=1000) if archi != "-" else AudioSegment.silent(duration=1000)
+
+    # Aggiungiamo i parametri di gain (in dB)
+    # Esempio: -5dB per abbassare, +2dB per alzare
+    basso_wave = basso_wave.apply_gain(-2) 
+    rhodes_wave = rhodes_wave.apply_gain(-5)
+    chitarra_wave = chitarra_wave.apply_gain(-8)
+    archi_wave = archi_wave.apply_gain(-10)
+    
+    # Puoi rendere questi valori dinamici basandoti sugli slider:
+    # basso_wave = basso_wave.apply_gain(volume_basso
+    
+    # Ora puoi sommarli nel mix finale
+    mix = basso_wave.overlay(rhodes_wave).overlay(chitarra_wave).overlay(archi_wave)
+
+    # Esportiamo in un buffer
+    buffer = io.BytesIO()
+    mix.export(buffer, format="wav")
+    return buffer
 
 # Configurazione della pagina
 st.set_page_config(page_title="R&B Riff Station", page_icon="🎹", layout="centered")
@@ -20,35 +55,23 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Intestazione
-st.title("🎹 R&B Riff Station - '90s Vibe")
-st.write("Componi il tuo giro armonico ispirato a Toni Braxton, Janet Jackson, Monica e Brandy. Seleziona le note per ogni strumento:")
+st.title("🎹 R&B Sound Studio")
 
-# Lista delle note (con pausa iniziale)
-note = ["-", "Do", "Do#", "Re", "Mib", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "Sib", "Si"]
-
-# Creiamo due colonne per un layout più compatto su iPad
-col1, col2 = st.columns(2)
-
-with col1:
-    st.subheader("Groove & Basso")
-    basso = st.selectbox("🎸 Basso Synth / Slap", note, index=0)
-    rhodes = st.selectbox("🎹 Fender Rhodes", note, index=0)
-
-with col2:
-    st.subheader("Melodia & Atmosfera")
-    chitarra = st.selectbox("🎼 Chitarra Clean", note, index=0)
-    archi = st.selectbox("🎻 Tappeto Archi / Synth", note, index=0)
+basso = st.selectbox("🎸 Basso Synth", ["-", "Do", "Re", "Mi", "Fa", "Sol", "La", "Si"])
+rhodes = st.selectbox("🎹 Piano Rhodes", ["-", "Do", "Re", "Mi", "Fa", "Sol", "La", "Si"])
+chitarra = st.selectbox("🎼 Chitarra Clean", ["-", "Do", "Re", "Mi", "Fa", "Sol", "La", "Si"])
+archi = st.selectbox("🎻 Tappeto Archi / Synth", ["-", "Do", "Re", "Mi", "Fa", "Sol", "La", "Si"])
 
 # Pulsante di generazione
 st.markdown("---")
 if st.button("Genera Riff R&B"):
-    # Controllo se è stato inserito qualcosa
     if basso == "-" and rhodes == "-" and chitarra == "-" and archi == "-":
-        st.warning("Ehi producer, inserisci almeno una nota per far partire la magia!")
+        st.warning("Seleziona almeno uno strumento!")
     else:
         st.success("✨ Il tuo Riff R&B è pronto!")
-        
+        audio_buffer = genera_audio(basso, rhodes, chitarra, archi, None, None, None, None)
+        st.audio(audio_buffer, format="audio/wav")
+                
         # Mostra il risultato in una card formattata
         st.info(f"""
         **Il tuo Arrangiamento:**
@@ -57,5 +80,4 @@ if st.button("Genera Riff R&B"):
         * **Chitarra:** {chitarra}
         * **Archi:** {archi}
         """)
-        
-        st.write("🎵 *Immagina queste note suonate su un beat TR-808 lento (circa 85 BPM), con un po' di swing e tanto riverbero...*")
+    

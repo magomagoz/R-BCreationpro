@@ -9,7 +9,7 @@ NOTE_MAP = {"-": 0, "Do": 261.63, "Re": 293.66, "Mi": 329.63, "Fa": 349.23, "Sol
 SR = 44100
 
 
-st.image("banner.png")
+st.image("banner.png", lauout = "wide")
 
 st.title("🎹 R&B Sequencer Pro")
 

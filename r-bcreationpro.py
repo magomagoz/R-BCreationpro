@@ -9,6 +9,9 @@ def note_to_freq(note_name):
     notes = {"Do": 261.63, "Re": 293.66, "Mi": 329.63, "Fa": 349.23, "Sol": 392.00, "La": 440.00, "Si": 493.88}
     return notes.get(note_name, 0)
 
+
+#def genera_audio(basso, rhodes, chitarra, archi, vol_b, vol_rh, vol_ch, vol_ar):
+    
 def genera_audio(basso, rhodes, chitarra, archi):
     # Generiamo un secondo di audio per ogni strumento
     # Nota: il basso usa una forma d'onda più cupa (Square), il Rhodes più pura (Sine)
@@ -24,15 +27,20 @@ def genera_audio(basso, rhodes, chitarra, archi):
     chitarra_wave = chitarra_wave.apply_gain(-8)
     archi_wave = archi_wave.apply_gain(-10)
     
-    # Puoi rendere questi valori dinamici basandoti sugli slider:
-    # basso_wave = basso_wave.apply_gain(volume_basso
+    # Aggiungi un attacco di 50 millisecondi a ogni traccia
+    basso_wave = basso_wave.fade_in(50)
+    rhodes_wave = rhodes_wave.fade_in(50)
+    chitarra_wave = chitarra_wave.fade_in(50)
+    archi_wave = archi_wave.fade_in(50)
     
     # Ora puoi sommarli nel mix finale
+    # Dopo aver applicato i guadagni, normalizza il mix finale
     mix = basso_wave.overlay(rhodes_wave).overlay(chitarra_wave).overlay(archi_wave)
+    mix = mix.normalize(headroom=3.0) # Lascia 3dB di spazio per evitare distorsioni
 
     # Esportiamo in un buffer
     buffer = io.BytesIO()
-    mix.export(buffer, format="wav")
+    mix.normalize().export(buffer, format="wav")
     return buffer
 
 # Configurazione della pagina

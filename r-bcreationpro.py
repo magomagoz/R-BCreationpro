@@ -3,102 +3,43 @@ import numpy as np
 import io
 import scipy.io.wavfile as wavfile
 
+# Configurazione frequenze (Standard)
+def get_freq(note):
+    freqs = {"Do": 261.63, "Re": 293.66, "Mi": 329.63, "Fa": 349.23, "Sol": 392.00, "La": 440.00, "Si": 493.88}
+    return freqs.get(note, 261.63) # Default Do se non trova la nota
+
+# Generatore di forma d'onda con inviluppo per evitare click/sibilo
 def generate_tone(freq, duration=1.0, sr=44100):
     t = np.linspace(0, duration, int(sr * duration), False)
-    # Genera un'onda sinusoidale (il "beep" pulito)
-    wave = 0.5 * np.sin(2 * np.pi * freq * t)
-    return wave
-
-# Esempio di utilizzo in Streamlit
-if st.button("Suona"):
-    # Genera un tono a 440Hz (La)
-    audio_data = generate_tone(440)
-    # Converti in formato 16-bit PCM
-    audio_data = (audio_data * 32767).astype(np.int16)
-    
-    buffer = io.BytesIO()
-    wavfile.write(buffer, 44100, audio_data)
-    st.audio(buffer, format="audio/wav")
-
-# Funzione per generare frequenze semplici (MIDI to Hz)
-def note_to_freq(note_name):
-    notes = {"Do": 261.63, "Re": 293.66, "Mi": 329.63, "Fa": 349.23, "Sol": 392.00, "La": 440.00, "Si": 493.88}
-    return notes.get(note_name, 0)
-    
-def genera_audio(basso, rhodes, chitarra, archi):
-    # Generiamo un secondo di audio per ogni strumento
-    # Nota: il basso usa una forma d'onda più cupa (Square), il Rhodes più pura (Sine)
-    basso_wave = Square(note_to_freq(basso)/2).to_audio_segment(duration=1000) if basso != "-" else AudioSegment.silent(duration=1000)
-    rhodes_wave = Sine(note_to_freq(rhodes)).to_audio_segment(duration=1000) if rhodes != "-" else AudioSegment.silent(duration=1000)
-    chitarra_wave = Triangle(note_to_freq(chitarra)).to_audio_segment(duration=1000) if chitarra != "-" else AudioSegment.silent(duration=1000)
-    archi_wave = Sawtooth(note_to_freq(archi) * 2).to_audio_segment(duration=1000) if archi != "-" else AudioSegment.silent(duration=1000)
-
-    # Aggiungiamo i parametri di gain (in dB)
-    # Esempio: -5dB per abbassare, +2dB per alzare
-    basso_wave = basso_wave.apply_gain(-2) 
-    rhodes_wave = rhodes_wave.apply_gain(-5)
-    chitarra_wave = chitarra_wave.apply_gain(-8)
-    archi_wave = archi_wave.apply_gain(-10)
-    
-    # Aggiungi un attacco di 50 millisecondi a ogni traccia
-    basso_wave = basso_wave.fade_in(50)
-    rhodes_wave = rhodes_wave.fade_in(50)
-    chitarra_wave = chitarra_wave.fade_in(50)
-    archi_wave = archi_wave.fade_in(50)
-    
-    # Ora puoi sommarli nel mix finale
-    # Dopo aver applicato i guadagni, normalizza il mix finale
-    mix = basso_wave.overlay(rhodes_wave).overlay(chitarra_wave).overlay(archi_wave)
-    mix = mix.normalize(headroom=3.0) # Lascia 3dB di spazio per evitare distorsioni
-
-    # Esportiamo in un buffer
-    buffer = io.BytesIO()
-    mix.normalize().export(buffer, format="wav")
-    return buffer
-
-# Configurazione della pagina
-st.set_page_config(page_title="R&B Riff Station", page_icon="🎹", layout="centered")
-
-# Stile personalizzato opzionale per dare un tocco R&B anni '90
-st.markdown("""
-    <style>
-    div.stButton > button:first-child {
-        background-color: #e94560;
-        color: white;
-        font-weight: bold;
-        border-radius: 10px;
-        width: 100%;
-    }
-    div.stButton > button:first-child:hover {
-        background-color: #d13d55;
-        border-color: #d13d55;
-    }
-    </style>
-""", unsafe_allow_html=True)
+    # Onda sinusoidale
+    wave = np.sin(2 * np.pi * freq * t)
+    # Applica un fade-in/out di 50ms per eliminare il click di attacco
+    fade = 0.05
+    fade_samples = int(fade * sr)
+    envelope = np.ones_like(wave)
+    envelope[:fade_samples] = np.linspace(0, 1, fade_samples)
+    envelope[-fade_samples:] = np.linspace(1, 0, fade_samples)
+    return wave * envelope
 
 st.title("🎹 R&B Sound Studio")
 
-basso = st.selectbox("🎸 Basso Synth", ["-", "Do", "Re", "Mi", "Fa", "Sol", "La", "Si"])
-rhodes = st.selectbox("🎹 Piano Rhodes", ["-", "Do", "Re", "Mi", "Fa", "Sol", "La", "Si"])
-chitarra = st.selectbox("🎼 Chitarra Clean", ["-", "Do", "Re", "Mi", "Fa", "Sol", "La", "Si"])
-archi = st.selectbox("🎻 Tappeto Archi / Synth", ["-", "Do", "Re", "Mi", "Fa", "Sol", "La", "Si"])
+# Input utente
+basso_note = st.selectbox("Basso", ["-", "Do", "Re", "Mi", "Fa", "Sol", "La", "Si"])
+rhodes_note = st.selectbox("Rhodes", ["-", "Do", "Re", "Mi", "Fa", "Sol", "La", "Si"])
 
-# Pulsante di generazione
-st.markdown("---")
-if st.button("Genera Riff R&B"):
-    if basso == "-" and rhodes == "-" and chitarra == "-" and archi == "-":
-        st.warning("Seleziona almeno uno strumento!")
-    else:
-        st.success("✨ Il tuo Riff R&B è pronto!")
-        audio_buffer = genera_audio(basso, rhodes, chitarra, archi, None, None, None, None)
-        st.audio(audio_buffer, format="audio/wav")
-                
-        # Mostra il risultato in una card formattata
-        st.info(f"""
-        **Il tuo Arrangiamento:**
-        * **Basso:** {basso}
-        * **Rhodes:** {rhodes}
-        * **Chitarra:** {chitarra}
-        * **Archi:** {archi}
-        """)
+if st.button("Genera Riff"):
+    sr = 44100
+    durata = 1.0
     
+    # Generazione coerente
+    basso_wave = generate_tone(get_freq(basso_note)/2) if basso_note != "-" else np.zeros(int(sr * durata))
+    rhodes_wave = generate_tone(get_freq(rhodes_note)) if rhodes_note != "-" else np.zeros(int(sr * durata))
+    
+    # Mix bilanciato (Somma e Normalizzazione)
+    mix = (basso_wave * 0.5) + (rhodes_wave * 0.4)
+    mix = mix / np.max(np.abs(mix)) # Normalizzazione finale
+    
+    # Esportazione
+    buffer = io.BytesIO()
+    wavfile.write(buffer, sr, (mix * 32767).astype(np.int16))
+    st.audio(buffer, format="audio/wav")

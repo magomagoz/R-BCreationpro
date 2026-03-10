@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 import io
 import scipy.io.wavfile as wavfile
+import base64
 
 # Configurazione Frequenze (Ottava centrale)
 NOTE_MAP = {"-": 0, "Do": 261.63, "Re": 293.66, "Mi": 329.63, "Fa": 349.23, "Sol": 392.00, "La": 440.00, "Si": 493.88}
@@ -41,7 +42,7 @@ for instr, w_type in strumenti.items():
     cols = st.columns(4)
     sequenza[instr] = [cols[i].selectbox(f"B{i+1}", list(NOTE_MAP.keys()), key=f"{instr}_{i}") for i in range(4)]
 
-if st.button("Genera Loop"):
+if st.button("Genera e Avvia Loop"):
     # Costruzione traccia
     tracce = []
     for instr, w_type in strumenti.items():
@@ -52,12 +53,25 @@ if st.button("Genera Loop"):
     # Mix e Normalizzazione
     mix = sum(tracce)
     mix = mix / np.max(np.abs(mix)) if np.max(np.abs(mix)) > 0 else mix
-    
-    # Esporta
+        
+    # Esporta in formato wav
     buffer = io.BytesIO()
     wavfile.write(buffer, SR, (mix * 32767).astype(np.int16))
-    st.audio(buffer, format="audio/wav")
+    audio_bytes = buffer.getvalue()
+    
+    # Converti in base64 per HTML/JS
+    b64_audio = base64.b64encode(audio_bytes).decode()
+    
+    # Inseriamo un tag <audio> con JS per il loop infinito
+    st.markdown(f"""
+        <audio id="myAudio" autoplay loop>
+            <source src="data:audio/wav;base64,{b64_audio}" type="audio/wav">
+        </audio>
+        <button onclick="document.getElementById('myAudio').pause();">⏹ Ferma Loop</button>
+        <button onclick="document.getElementById('myAudio').play();">▶ Avvia Loop</button>
+    """, unsafe_allow_html=True)
 
+    
 # Gestione Stato per il Reset
 if 'reset' not in st.session_state: st.session_state.reset = False
 

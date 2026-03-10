@@ -1,76 +1,61 @@
-import random
-import numpy as np  # Per array facili, opzionale
+import streamlit as st
 
-# Scala pentatonica minore A (simile a tonalità R&B: A C D E G)
-pentatonica_minore = [0, 3, 5, 7, 10]  # Semitoni da A
+# Configurazione della pagina
+st.set_page_config(page_title="R&B Riff Station", page_icon="🎹", layout="centered")
 
-# Durate in battiti (4/4, BPM ~80-90 R&B lento/mid)
-durata_note = [0.25, 0.5, 0.75, 1.0, 1.5, 2.0]  # Ottavi, quarti, ecc.
+# Stile personalizzato opzionale per dare un tocco R&B anni '90
+st.markdown("""
+    <style>
+    div.stButton > button:first-child {
+        background-color: #e94560;
+        color: white;
+        font-weight: bold;
+        border-radius: 10px;
+        width: 100%;
+    }
+    div.stButton > button:first-child:hover {
+        background-color: #d13d55;
+        border-color: #d13d55;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-def genera_melodia(lunghezza=16, tonalita_base=0):
-    """
-    Genera una melodia casuale R&B-style.
-    - lunghezza: numero di note
-    - tonalita_base: trasposizione (es. 0=A, 3=C)
-    """
-    melodia = []
-    altezza_precedente = 0  # Parte bassa per vibe intima
-    
-    for _ in range(lunghezza):
-        # Logica R&B: preferisci note vicine (step piccoli), occasionali salti (melismi Braxton/Carey)
-        step = random.choice([-2, -1, 0, 1, 2])  # Movimento melodico fluido
-        salto_occasionale = random.random() < 0.2  # 20% chance salto emotivo
-        if salto_occasionale:
-            step += random.choice([-3, 3, 5])  # Salto tipo Braxton
+# Intestazione
+st.title("🎹 R&B Riff Station - '90s Vibe")
+st.write("Componi il tuo giro armonico ispirato a Toni Braxton, Janet Jackson, Monica e Brandy. Seleziona le note per ogni strumento:")
+
+# Lista delle note (con pausa iniziale)
+note = ["-", "Do", "Do#", "Re", "Mib", "Mi", "Fa", "Fa#", "Sol", "Sol#", "La", "Sib", "Si"]
+
+# Creiamo due colonne per un layout più compatto su iPad
+col1, col2 = st.columns(2)
+
+with col1:
+    st.subheader("Groove & Basso")
+    basso = st.selectbox("🎸 Basso Synth / Slap", note, index=0)
+    rhodes = st.selectbox("🎹 Fender Rhodes", note, index=0)
+
+with col2:
+    st.subheader("Melodia & Atmosfera")
+    chitarra = st.selectbox("🎼 Chitarra Clean", note, index=0)
+    archi = st.selectbox("🎻 Tappeto Archi / Synth", note, index=0)
+
+# Pulsante di generazione
+st.markdown("---")
+if st.button("Genera Riff R&B"):
+    # Controllo se è stato inserito qualcosa
+    if basso == "-" and rhodes == "-" and chitarra == "-" and archi == "-":
+        st.warning("Ehi producer, inserisci almeno una nota per far partire la magia!")
+    else:
+        st.success("✨ Il tuo Riff R&B è pronto!")
         
-        altezza = (altezza_precedente + step) % 12
-        altezza = max(0, min(11, altezza))  # Limita ottava
-        altezza += tonalita_base
+        # Mostra il risultato in una card formattata
+        st.info(f"""
+        **Il tuo Arrangiamento:**
+        * **Basso:** {basso}
+        * **Rhodes:** {rhodes}
+        * **Chitarra:** {chitarra}
+        * **Archi:** {archi}
+        """)
         
-        # Scegli dalla scala, arrotonda all'altezza più vicina
-        nota_scala = min(pentatonica_minore, key=lambda x: abs(x - altezza))
-        durata = random.choice(durata_note)
-        
-        melodia.append({
-            'nota': nota_scala + tonalita_base,
-            'durata': durata,
-            'semitono': nota_scala  # Per debug
-        })
-        altezza_precedente = nota_scala
-    
-    return melodia
-
-import mido
-from mido import MidiFile, MidiTrack, Message
-
-def esporta_midi(melodia, filename='melodia_rnb.mid', bpm=85):
-    mid = MidiFile(ticks_per_beat=480)  # Standard MIDI
-    track = MidiTrack()
-    mid.tracks.append(track)
-    
-    time = 0
-    track.append(Message('program_change', program=4, time=0))  # Suono Rhodes/electric piano R&B
-    
-    for nota in melodia:
-        semitono = nota['nota'] + 60  # MIDI note (C4=60, A3-ish per vibe bassa)
-        durata_ticks = int((nota['durata'] / 4) * bpm * (480 / 60))  # Converti battiti in ticks
-        
-        track.append(Message('note_on', note=semitono, velocity=80, time=time))
-        time = durata_ticks
-        track.append(Message('note_off', note=semitono, velocity=0, time=durata_ticks))
-    
-    mid.save(filename)
-    print(f"MIDI salvato: {filename}")
-
-# Usa dopo aver generato la melodia
-esporta_midi(melodia, 'midnite_rnb.mid')
-
-# Esempio di generazione
-random.seed(42)  # Riproducibile
-melodia = genera_melodia(16, tonalita_base=9)  # A minor-ish
-
-print("Melodia generata (16 note, stile R&B Braxton/Carey):")
-print("Nota (semitono rel.) | Durata (battiti) | Nome appross. (da A)")
-for i, nota in enumerate(melodia):
-    nome_nota = ['A', 'A#', 'B', 'C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#'][nota['nota'] % 12]
-    print(f"{i+1:2d}: {nota['semitono']:2d} ({nome_nota}) | {nota['durata']:4.2f}")
+        st.write("🎵 *Immagina queste note suonate su un beat TR-808 lento (circa 85 BPM), con un po' di swing e tanto riverbero...*")

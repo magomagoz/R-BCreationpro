@@ -2,25 +2,61 @@ import streamlit as st
 import numpy as np
 import io
 import scipy.io.wavfile as wavfile
-from pydub import AudioSegment
 
-# Configurazione
+# Configurazione Frequenze (Ottava centrale)
 NOTE_MAP = {"-": 0, "Do": 261.63, "Re": 293.66, "Mi": 329.63, "Fa": 349.23, "Sol": 392.00, "La": 440.00, "Si": 493.88}
 SR = 44100
-DURATA_BATTUTA = 0.8 
 
-# Generatore Toni
-def generate_tone(freq, duration, type="sine"):
-    if freq == 0: return np.zeros(int(SR * duration))
-    t = np.linspace(0, duration, int(SR * duration), False)
-    if type == "square": wave = np.sign(np.sin(2 * np.pi * freq * t))
-    elif type == "saw": wave = 2 * (t * freq - np.floor(0.5 + t * freq))
-    else: wave = np.sin(2 * np.pi * freq * t)
-    return wave * 0.5
 
 st.image("banner.png")
-st.title("🎹 R&B Sequencer Pro")
 
+st.title("🎹 R&B Sequencer Pro (No Dependency Issues)")
+
+# Parametri
+bpm = st.slider("BPM", 60, 140, 90)
+durata_battuta = 60 / bpm
+
+def generate_wave(freq, duration, wave_type="sine"):
+    if freq == 0: return np.zeros(int(SR * duration))
+    t = np.linspace(0, duration, int(SR * duration), False)
+    # Generazione forme d'onda
+    if wave_type == "square": wave = np.sign(np.sin(2 * np.pi * freq * t))
+    elif wave_type == "saw": wave = 2 * (t * freq - np.floor(0.5 + t * freq))
+    else: wave = np.sin(2 * np.pi * freq * t)
+    
+    # Inviluppo per eliminare click
+    fade = 0.02
+    fade_samples = int(fade * SR)
+    env = np.ones_like(wave)
+    env[:fade_samples] = np.linspace(0, 1, fade_samples)
+    env[-fade_samples:] = np.linspace(1, 0, fade_samples)
+    return wave * env
+
+# Interfaccia Sequencer
+strumenti = {"Basso": "square", "Chitarra": "sine", "Archi": "saw"}
+sequenza = {}
+
+for instr, w_type in strumenti.items():
+    st.write(f"### {instr}")
+    cols = st.columns(4)
+    sequenza[instr] = [cols[i].selectbox(f"B{i+1}", list(NOTE_MAP.keys()), key=f"{instr}_{i}") for i in range(4)]
+
+if st.button("Genera Loop"):
+    # Costruzione traccia
+    tracce = []
+    for instr, w_type in strumenti.items():
+        # Moltiplicatore ottava: 0.5 per Basso, 2.0 per Archi
+        octave = 0.5 if instr == "Basso" else (2.0 if instr == "Archi" else 1.0)
+        tracce.append(np.concatenate([generate_wave(NOTE_MAP[n]*octave, durata_battuta, w_type) for n in sequenza[instr]]))
+    
+    # Mix e Normalizzazione
+    mix = sum(tracce)
+    mix = mix / np.max(np.abs(mix)) if np.max(np.abs(mix)) > 0 else mix
+    
+    # Esporta
+    buffer = io.BytesIO()
+    wavfile.write(buffer, SR, (mix * 32767).astype(np.int16))
+    st.audio(buffer, format="audio/wav")
 
 # Gestione Stato per il Reset
 if 'reset' not in st.session_state: st.session_state.reset = False
@@ -29,61 +65,7 @@ def reset_grid():
     st.session_state.reset = True
     st.rerun()
 
-# Controllo BPM
-bpm = st.slider("BPM (Velocità)", min_value=60, max_value=140, value=90)
-durata_battuta = 60 / bpm # Calcolo dinamico della durata in secondi
-
-def generate_tone(freq, duration, type="sine"):
-    if freq == 0: return np.zeros(int(SR * duration))
-    t = np.linspace(0, duration, int(SR * duration), False)
-    if type == "square": wave = np.sign(np.sin(2 * np.pi * freq * t))
-    elif type == "saw": wave = 2 * (t * freq - np.floor(0.5 + t * freq))
-    else: wave = np.sin(2 * np.pi * freq * t)
-    return wave * 0.3
-
-# Griglia
-strumenti = ["Basso", "Batteria", "Chitarra", "Archi"]
-sequenza = {}
-
-for instr in strumenti:
-    st.write(f"### {instr}")
-    cols = st.columns(4)
-    seq = []
-    for i in range(4):
-        # Usiamo il session_state per gestire il valore del selectbox
-        val = cols[i].selectbox(f"B{i+1}", list(NOTE_MAP.keys()), key=f"{instr}_{i}")
-        seq.append(val)
-    sequenza[instr] = seq
-
+st.divider()
 if st.button("Reset Griglia"):
     reset_grid()
-
-if st.button("Genera Loop"):
-    # Generazione tracce basata sul BPM attuale
-    basso_loop = np.concatenate([generate_tone(NOTE_MAP[n]/2, durata_battuta, "square") for n in sequenza["Basso"]])
-    chitarra_loop = np.concatenate([generate_tone(NOTE_MAP[n], durata_battuta, "sine") for n in sequenza["Chitarra"]])
-    archi_loop = np.concatenate([generate_tone(NOTE_MAP[n]*2, durata_battuta, "saw") for n in sequenza["Archi"]])
     
-    # Mix e Normalizzazione
-    mix = (basso_loop + chitarra_loop + archi_loop)
-    mix = mix / np.max(np.abs(mix)) if np.max(np.abs(mix)) > 0 else mix
-
-    # Parametri del Delay
-    delay_ms = int(0.25 * SR)  # Ritardo di 250ms (un quarto di secondo)
-    feedback = 0.4             # Intensità dell'eco
-    
-    # Creiamo una traccia ritardata
-    delay_line = np.zeros_like(mix)
-    delay_line[delay_ms:] = mix[:-delay_ms] * feedback
-    
-    # Sommiamo il segnale originale con l'eco
-    mix_con_delay = mix + delay_line
-    
-    # Normalizzazione finale per evitare clipping dopo l'aggiunta dell'eco
-    mix_finale = mix_con_delay / np.max(np.abs(mix_con_delay)) 
-    
-    # Esportazione
-    buffer = io.BytesIO()
-    wavfile.write(buffer, SR, (mix_finale * 32767).astype(np.int16))
-    st.audio(buffer, format="audio/wav")
-

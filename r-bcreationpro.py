@@ -1,16 +1,29 @@
 import streamlit as st
 import numpy as np
-from pydub import AudioSegment
-from pydub.generators import Sine, Square, Sawtooth, Triangle
 import io
+import scipy.io.wavfile as wavfile
+
+def generate_tone(freq, duration=1.0, sr=44100):
+    t = np.linspace(0, duration, int(sr * duration), False)
+    # Genera un'onda sinusoidale (il "beep" pulito)
+    wave = 0.5 * np.sin(2 * np.pi * freq * t)
+    return wave
+
+# Esempio di utilizzo in Streamlit
+if st.button("Suona"):
+    # Genera un tono a 440Hz (La)
+    audio_data = generate_tone(440)
+    # Converti in formato 16-bit PCM
+    audio_data = (audio_data * 32767).astype(np.int16)
+    
+    buffer = io.BytesIO()
+    wavfile.write(buffer, 44100, audio_data)
+    st.audio(buffer, format="audio/wav")
 
 # Funzione per generare frequenze semplici (MIDI to Hz)
 def note_to_freq(note_name):
     notes = {"Do": 261.63, "Re": 293.66, "Mi": 329.63, "Fa": 349.23, "Sol": 392.00, "La": 440.00, "Si": 493.88}
     return notes.get(note_name, 0)
-
-
-#def genera_audio(basso, rhodes, chitarra, archi, vol_b, vol_rh, vol_ch, vol_ar):
     
 def genera_audio(basso, rhodes, chitarra, archi):
     # Generiamo un secondo di audio per ogni strumento

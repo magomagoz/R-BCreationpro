@@ -66,8 +66,23 @@ if st.button("Genera Loop"):
     # Mix e Normalizzazione
     mix = (basso_loop + chitarra_loop + archi_loop)
     mix = mix / np.max(np.abs(mix)) if np.max(np.abs(mix)) > 0 else mix
+
+    # Parametri del Delay
+    delay_ms = int(0.25 * SR)  # Ritardo di 250ms (un quarto di secondo)
+    feedback = 0.4             # Intensità dell'eco
     
+    # Creiamo una traccia ritardata
+    delay_line = np.zeros_like(mix)
+    delay_line[delay_ms:] = mix[:-delay_ms] * feedback
+    
+    # Sommiamo il segnale originale con l'eco
+    mix_con_delay = mix + delay_line
+    
+    # Normalizzazione finale per evitare clipping dopo l'aggiunta dell'eco
+    mix_finale = mix_con_delay / np.max(np.abs(mix_con_delay)) 
+    
+    # Esportazione
     buffer = io.BytesIO()
-    wavfile.write(buffer, SR, (mix * 32767).astype(np.int16))
+    wavfile.write(buffer, SR, (mix_finale * 32767).astype(np.int16))
     st.audio(buffer, format="audio/wav")
 

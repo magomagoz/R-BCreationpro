@@ -14,7 +14,7 @@ st.image("banner.png")
 st.title("🎹 R&B Sequencer Pro (No Dependency Issues)")
 
 # Parametri
-bpm = st.slider("BPM", 60, 140, 90)
+bpm = st.slider("BPM", 60, 140, 85)
 durata_battuta = 60 / bpm
 
 def generate_wave(freq, duration, wave_type="sine"):

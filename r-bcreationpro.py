@@ -11,7 +11,7 @@ SR = 44100
 
 st.image("banner.png")
 
-st.title("🎹 R&B Sequencer Pro (No Dependency Issues)")
+st.title("🎹 R&B Sequencer Pro")
 
 # Parametri
 bpm = st.slider("BPM", 60, 140, 85)

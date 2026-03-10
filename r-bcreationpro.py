@@ -8,10 +8,11 @@ import base64
 NOTE_MAP = {"-": 0, "Do": 261.63, "Re": 293.66, "Mi": 329.63, "Fa": 349.23, "Sol": 392.00, "La": 440.00, "Si": 493.88}
 SR = 44100
 
+# Imposta layout="wide" per espandere l'app su tutta la larghezza
+st.set_page_config(page_title="R&B Sequencer", layout="wide")
 
 st.image("banner.png")
-
-st.title("🎹 R&B Sequencer Pro", layout = "wide")
+st.title("🎹 R&B Sequencer Pro")
 
 # Parametri
 bpm = st.slider("BPM", 60, 140, 85)
